@@ -4,6 +4,7 @@ namespace idk\yii2\google\apiclient\commands;
 
 use Google_Auth_Exception;
 use Google_Client;
+use Ramsey\Uuid\Uuid;
 use Yii;
 use yii\console\Controller;
 use yii\console\Exception;
@@ -191,13 +192,13 @@ class GoogleController extends Controller
     /**
      * Generates the credential file, prompting the user for the verification code
      * @param string $api The API name
-     * @param Array $scopes The desired scopes
+     * @param array $scopes The desired scopes
      * @return string
      */
     private function generateCredentialsFile($api, $scopes)
     {
 
-        $credentialsPath = Yii::getAlias($this->configPath) . '/' . $api . '_' . $this->getUuid() . '.json';
+        $credentialsPath = Yii::getAlias($this->configPath) . '/' . $api . '_' . Uuid::uuid4()->toString() . '.json';
 
         $client = new Google_Client();
         $client->setAuthConfigFile($this->clientSecretPath);
@@ -230,34 +231,5 @@ class GoogleController extends Controller
         file_put_contents($credentialsPath, $accessToken);
 
         return $credentialsPath;
-    }
-
-    /**
-     * Generates a v4 UUID
-     *
-     * @return string
-     */
-    private function getUuid()
-    {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-
-            // 32 bits for "time_low"
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-
-            // 16 bits for "time_mid"
-            mt_rand(0, 0xffff),
-
-            // 16 bits for "time_hi_and_version",
-            // four most significant bits holds version number 4
-            mt_rand(0, 0x0fff) | 0x4000,
-
-            // 16 bits, 8 bits for "clk_seq_hi_res",
-            // 8 bits for "clk_seq_low",
-            // two most significant bits holds zero and one for variant DCE1.1
-            mt_rand(0, 0x3fff) | 0x8000,
-
-            // 48 bits for "node"
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
     }
 }
