@@ -1,7 +1,11 @@
-
 # yii2-google-apiclient
 
 A Yii2 wrapper for the official Google API PHP Client.
+
+[![Latest Stable Version](https://poser.pugx.org/idk/yii2-google-apiclient/version)](https://packagist.org/packages/idk/yii2-google-apiclient)
+[![Latest Unstable Version](https://poser.pugx.org/idk/yii2-google-apiclient/v/unstable)](//packagist.org/packages/idk/yii2-google-apiclient)
+[![License](https://poser.pugx.org/idk/yii2-google-apiclient/license)](https://packagist.org/packages/idk/yii2-google-apiclient)
+[![Total Downloads](https://poser.pugx.org/idk/yii2-google-apiclient/downloads)](https://packagist.org/packages/idk/yii2-google-apiclient)
 
 This extension features:
 
