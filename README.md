@@ -7,7 +7,7 @@ A Yii2 wrapper for the official Google API PHP Client.
 [![License](https://poser.pugx.org/idk/yii2-google-apiclient/license)](https://packagist.org/packages/idk/yii2-google-apiclient)
 [![Total Downloads](https://poser.pugx.org/idk/yii2-google-apiclient/downloads)](https://packagist.org/packages/idk/yii2-google-apiclient)
 
-This extension features:
+This extension comes with:
 
 * A console utility to generate your credentials files
 * A component that will take care of the authentication, and give you access to the service
