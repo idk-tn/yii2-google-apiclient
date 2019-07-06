@@ -69,7 +69,7 @@ This will enable you to access the GMail authenticated service `Yii::$app->googl
 **Displaying your newest message subject on GMail**
 
 ```php
-$gmail = new Google_Service_Gmail(Yii::$app->google->getService());
+$gmail = new \Google_Service_Gmail(Yii::$app->google->getService());
 
 $messages = $gmail->users_messages->listUsersMessages('me', [
     'maxResults' => 1,
