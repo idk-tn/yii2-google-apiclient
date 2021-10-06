@@ -6,6 +6,7 @@ use Google_Client;
 use Yii;
 use yii\base\Component;
 use yii\base\Exception;
+use yii\helpers\Json;
 
 /**
  * Class GoogleApiClient
@@ -76,7 +77,7 @@ class GoogleApiClient extends Component
         if ($client->isAccessTokenExpired()) {
             $client->setAuthConfigFile(Yii::getAlias($this->clientSecretPath));
             $client->refreshToken($client->getRefreshToken());
-            $this->saveAccessToken($client->getAccessToken());
+            $this->saveAccessToken(Json::encode($client->getAccessToken()));
         }
         return $client;
     }
