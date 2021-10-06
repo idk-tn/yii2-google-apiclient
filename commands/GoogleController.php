@@ -36,7 +36,6 @@ class GoogleController extends Controller
      */
     public $clientSecretPath = '@runtime/google-apiclient/secret.json';
 
-
     /**
      * Prints this help message
      */
@@ -52,92 +51,102 @@ class GoogleController extends Controller
      * @param string $api The api identifier. Will be prompted for if not provided.
      * @throws Exception
      */
-    public function actionConfigure($clientSecretPath, $api = '')
+    public function actionConfigure($clientSecretPath, array $api_list = [])
     {
-
         $this->clientSecretPath = Yii::getAlias($clientSecretPath);
+        $all_scopes=[];
+
         if (!file_exists($this->clientSecretPath)) {
             throw new Exception("The client secret file \"{$this->clientSecretPath}\" does not exist!");
         }
 
-        if (!$api || !isset($this->apis[$api])) {
-            if ($api) {
-                $this->stderr("Error: Unknown API requested: $api, prompting for the correct one..\n");
-            }
-            // prompt for the api to use
+        if (empty($api_list)){
             $options = [];
             foreach ($this->apis as $id => $versions) {
-                foreach ($versions as $version => $_api) {
-                    $options[$id] = $_api->title;
-                    break;
-                }
+                $options[] = $id;
             }
-            $api = $this->select("\nPick an API to connect to", $options);
+            $api_list = explode(',', $this->prompt("\nPick an API to connect to [".implode(',',$options)."]\nPlease enter the required API separated by a comma:"));
         }
 
-        $version = false;
-        if (count($this->apis[$api]) > 1) {
-            if ($this->prompt("\nThe $api API has several versions. Install preferred version?")) {
-                foreach ($this->apis[$api] as $_api) {
-                    if ($_api->preferred) {
-                        $version = $_api->version;
-                    }
+        foreach ($api_list as $api){
+            if (!isset($this->apis[$api])) {
+                if ($api) {
+                    $this->stderr("Error: Unknown API requested: $api, prompting for the correct one..\n");
                 }
-            } else {
-                $versions = [];
-                foreach ($this->apis[$api] as $version => $_api) {
-                    $versions[$version] = $version;
-                }
-                $version = $this->select("\nPick the desired version number", $versions);
             }
-        } else {
-            $version = array_keys($this->apis[$api])[0];
         }
 
-        if ($version) {
-            // Discover the API
-            $discovery = $this->apis[$api][$version];
-
-            $response = Json::decode(file_get_contents($discovery->discoveryRestUrl), false);
-
-            $scopes = [];
-            // Prompt for scopes if any
-            if (isset($response->auth->oauth2->scopes)) {
-                $this->stdout("\nAvailable scopes :\n");
-                $availableScopes = [];
-                foreach ($response->auth->oauth2->scopes as $scope => $desc) {
-                    $availableScopes[] = $scope;
-                    $this->stdout("  $scope\t\t{$desc->description}\n");
-                }
-
-                $done = false;
-                while (!$done) {
-                    $inputs = explode(',', $this->prompt("Please enter the required scopes separated by a comma:"));
-                    $scopes = [];
-
-                    foreach ($inputs as $input) {
-                        $input = trim($input);
-                        if ($input) {
-                            if (!in_array($input, $availableScopes)) {
-                                $this->stderr("Error in the input string, prompting again...\n\n");
-                                continue 2;
-                            } else {
-                                $scopes[] = $input;
-                            }
+        foreach ($api_list as $api) {
+            $version = false;
+            if (count($this->apis[$api]) > 1) {
+                if ($this->prompt("\nThe $api API has several versions. Install preferred version?")) {
+                    foreach ($this->apis[$api] as $_api) {
+                        if ($_api->preferred) {
+                            $version = $_api->version;
                         }
                     }
-
-                    if (!empty($scopes)) {
-                        $done = true;
+                } else {
+                    $versions = [];
+                    foreach ($this->apis[$api] as $version => $_api) {
+                        $versions[$version] = $version;
                     }
+                    $version = $this->select("\nPick the desired version number", $versions);
                 }
+            } else {
+                $version = array_keys($this->apis[$api])[0];
             }
 
-            $credentialsPath = $this->generateCredentialsFile($api, $scopes);
-            $this->stdout(sprintf("Credentials saved to %s\n\n", $credentialsPath));
-        } else {
-            $this->stderr("Something went terribly wrong..\n");
+            if ($version) {
+                // Discover the API
+                $discovery = $this->apis[$api][$version];
+
+                $response = Json::decode(file_get_contents($discovery->discoveryRestUrl), false);
+
+                $scopes = [];
+                // Prompt for scopes if any
+                if (isset($response->auth->oauth2->scopes)) {
+                    $this->stdout("\nAvailable scopes :\n");
+                    $availableScopes = [];
+                    foreach ($response->auth->oauth2->scopes as $scope => $desc) {
+                        $availableScopes[] = $scope;
+                        $this->stdout("  $scope\t\t{$desc->description}\n");
+                    }
+
+                    $done = false;
+                    while (!$done) {
+                        $inputs = explode(',', $this->prompt("Please enter the required scopes separated by a comma:"));
+                        $scopes = [];
+
+                        foreach ($inputs as $input) {
+                            $input = trim($input);
+                            if ($input) {
+                                if (!in_array($input, $availableScopes)) {
+                                    $this->stderr("Error in the input string, prompting again...\n\n");
+                                    continue 2;
+                                } else {
+                                    $scopes[] = $input;
+                                }
+                            }
+                        }
+
+                        if (!empty($scopes)) {
+                            $done = true;
+                        }
+                    }
+                }
+                foreach ($scopes as $scope) {
+                    $all_scopes[] = $scope;
+                }
+            } else {
+                $this->stderr("Something went terribly wrong..\n");
+            }
         }
+
+        $credentialsPath = $this->generateCredentialsFile($api_list, $all_scopes);
+        $this->stdout(sprintf("Credentials saved to %s\n\n", $credentialsPath));
+
+
+
     }
 
     /**
@@ -191,14 +200,14 @@ class GoogleController extends Controller
 
     /**
      * Generates the credential file, prompting the user for the verification code
-     * @param string $api The API name
+     * @param array $api The API name
      * @param array $scopes The desired scopes
      * @return string
      */
     private function generateCredentialsFile($api, $scopes)
     {
 
-        $credentialsPath = Yii::getAlias($this->configPath) . '/' . $api . '_' . Uuid::uuid4()->toString() . '.json';
+        $credentialsPath = Yii::getAlias($this->configPath) . '/' . implode('_',$api) . '_' . Uuid::uuid4()->toString() . '.json';
 
         $client = new Google_Client();
         $client->setAuthConfigFile($this->clientSecretPath);
@@ -216,7 +225,7 @@ class GoogleController extends Controller
 
             // Exchange authorization code for an access token.
             try {
-                $accessToken = $client->authenticate($authCode);
+                $accessToken = Json::encode($client->authenticate($authCode));
                 $authenticated = true;
             } catch (Google_Auth_Exception $e) {
                 $this->stderr($e->getMessage() . "\n");
@@ -224,10 +233,9 @@ class GoogleController extends Controller
         }
 
         // Store the credentials to disk.
-        if (!is_dir(dirname($credentialsPath))) {
-            mkdir(dirname($credentialsPath), 0700, true);
+        if (!is_dir(dirname($credentialsPath)) && !mkdir($concurrentDirectory = dirname($credentialsPath), 0700, true) && !is_dir($concurrentDirectory)) {
+            throw new \RuntimeException(sprintf('Directory "%s" was not created', $concurrentDirectory));
         }
-        /** @var string $accessToken */
         file_put_contents($credentialsPath, $accessToken);
 
         return $credentialsPath;
